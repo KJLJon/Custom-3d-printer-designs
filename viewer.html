@@ -95,8 +95,8 @@
     import { designs } from './js/core/design-registry.js';
     import { buildForm }      from './js/core/ui-builder.js';
     import { buildColorPanel, getColors } from './js/core/color-manager.js';
-    import { initViewer, renderGeometry } from './js/core/viewer.js';
-    import { exportAllSTL, buildExportButtons } from './js/core/stl-exporter.js';
+    import { initViewer } from './js/core/viewer.js';
+    import { exportAllSTL, buildExportButtons, enableExportButtons } from './js/core/stl-exporter.js';
 
     // ── Resolve design from URL param ───────────────────────────────────────
     const params  = new URLSearchParams(location.search);
@@ -174,6 +174,7 @@
           const colors        = getColors();
 
           sceneAPI.loadGeometries(geometries, design.colorRegions, colors);
+          enableExportButtons(design, geometries, inputs);
           overlay.style.display = 'none';
           exportBtn.disabled = false;
         } catch (err) {
