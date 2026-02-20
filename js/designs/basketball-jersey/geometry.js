@@ -15,7 +15,7 @@
 const JSCAD_MODELING = 'https://esm.sh/@jscad/modeling@2.12.0';
 const OPENTYPE_URL   = 'https://esm.sh/opentype.js@1.3.4';
 // Bebas Neue — free sports-style font, hosted on jsDelivr from Google Fonts repo
-const FONT_URL       = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bebasnеue/BebasNeue-Regular.ttf';
+const FONT_URL       = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bebasneue/BebasNeue-Regular.ttf';
 
 let _jscad    = null;
 let _opentype = null;

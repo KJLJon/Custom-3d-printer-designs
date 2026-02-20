@@ -14,7 +14,7 @@ const _colors = {};
 
 export function buildColorPanel(design, container, onChange) {
   container.innerHTML = '';
-  _colors;
+  Object.keys(_colors).forEach(k => delete _colors[k]);
 
   if (!design.colorRegions || design.colorRegions.length === 0) {
     container.innerHTML = '<p style="font-size:.8rem;color:var(--text-muted)">No color regions defined.</p>';
