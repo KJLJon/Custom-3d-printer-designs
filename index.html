@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom 3D Print Studio</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect width="32" height="32" rx="6" fill="#6366f1"/>
+          <path d="M8 24 L16 8 L24 24" stroke="white" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+          <path d="M10.5 19h11" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>3D Print Studio</span>
+      </div>
+      <nav class="header-nav">
+        <a href="https://github.com/KJLJon/Custom-3d-printer-designs" target="_blank" rel="noopener" class="nav-link">
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Custom 3D Print Designer</h1>
+      <p>Choose a design, customize it, preview it in 3D, and download print-ready STL files
+         for your multi-color printer.</p>
+    </section>
+
+    <section class="design-grid-section">
+      <div class="section-header">
+        <h2>Available Designs</h2>
+        <span class="design-count" id="design-count"></span>
+      </div>
+      <div class="design-grid" id="design-grid">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Optimized for Snapmaker J1/J1s · Up to 4-color FDM printing</p>
+  </footer>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import { designs } from './js/core/design-registry.js';
+
+    const grid = document.getElementById('design-grid');
+    const countEl = document.getElementById('design-count');
+
+    countEl.textContent = `${designs.length} design${designs.length !== 1 ? 's' : ''}`;
+
+    designs.forEach(design => {
+      const card = document.createElement('a');
+      card.className = 'design-card';
+      card.href = `viewer.html?design=${design.id}`;
+
+      const swatches = design.colorRegions
+        .slice(0, 4)
+        .map(r => `<span class="swatch" style="background:${r.default}" title="${r.label}"></span>`)
+        .join('');
+
+      card.innerHTML = `
+        <div class="card-thumb">
+          ${design.thumbnail
+            ? `<img src="${design.thumbnail}" alt="${design.name}" loading="lazy" />`
+            : `<div class="card-thumb-placeholder" aria-hidden="true">
+                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                   <path d="M24 6 L42 38 H6 Z" stroke="#6366f1" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+                 </svg>
+               </div>`
+          }
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">${design.name}</h3>
+          <p class="card-desc">${design.description}</p>
+          <div class="card-meta">
+            <div class="swatch-row">${swatches}</div>
+            <span class="color-count">${design.colorRegions.length} color${design.colorRegions.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  </script>
+</body>
+</html>
