@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Print Studio — Viewer</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="viewer-page">
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="logo back-link" aria-label="Back to designs">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        All Designs
+      </a>
+      <h1 class="viewer-title" id="viewer-title">Loading…</h1>
+    </div>
+  </header>
+
+  <div class="viewer-layout">
+
+    <!-- ── Left sidebar ──────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+
+      <section class="sidebar-section" id="inputs-section">
+        <h2 class="sidebar-heading">Customize</h2>
+        <div id="inputs-container">
+          <!-- Built by ui-builder.js -->
+        </div>
+      </section>
+
+      <section class="sidebar-section" id="colors-section">
+        <h2 class="sidebar-heading">Colors</h2>
+        <div id="colors-container">
+          <!-- Built by color-manager.js -->
+        </div>
+      </section>
+
+      <section class="sidebar-section">
+        <h2 class="sidebar-heading">Export STL</h2>
+        <p class="export-hint">One file per color region — import all into Snapmaker Luban
+           and assign a filament to each.</p>
+        <div id="export-buttons">
+          <!-- Built dynamically -->
+        </div>
+        <button class="btn btn-primary" id="export-all-btn" disabled>
+          Download All STL Files
+        </button>
+      </section>
+
+      <section class="sidebar-section print-guide" id="print-guide-section" style="display:none">
+        <h2 class="sidebar-heading">How to Print</h2>
+        <div id="print-guide-content"></div>
+      </section>
+
+    </aside>
+
+    <!-- ── 3D canvas area ─────────────────────────────── -->
+    <div class="canvas-area">
+      <canvas id="three-canvas"></canvas>
+
+      <div class="canvas-overlay" id="loading-overlay">
+        <div class="spinner" aria-label="Generating 3D preview…"></div>
+        <span>Generating preview…</span>
+      </div>
+
+      <div class="canvas-controls-hint">
+        Drag to rotate · Scroll to zoom · Right-drag to pan
+      </div>
+
+      <div class="canvas-error" id="canvas-error" style="display:none">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
+          <path d="M12 7v5M12 16h.01" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <p id="canvas-error-msg">Something went wrong generating the preview.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import { designs } from './js/core/design-registry.js';
+    import { buildForm }      from './js/core/ui-builder.js';
+    import { buildColorPanel, getColors } from './js/core/color-manager.js';
+    import { initViewer, renderGeometry } from './js/core/viewer.js';
+    import { exportAllSTL, buildExportButtons } from './js/core/stl-exporter.js';
+
+    // ── Resolve design from URL param ───────────────────────────────────────
+    const params  = new URLSearchParams(location.search);
+    const designId = params.get('design');
+    const design  = designs.find(d => d.id === designId);
+
+    if (!design) {
+      document.getElementById('viewer-title').textContent = 'Design not found';
+      document.getElementById('loading-overlay').style.display = 'none';
+      showError(`No design with id "${designId}". <a href="index.html">Go back</a>.`);
+    } else {
+      document.title = `${design.name} — 3D Print Studio`;
+      document.getElementById('viewer-title').textContent = design.name;
+
+      // Build UI
+      buildForm(design, document.getElementById('inputs-container'), onInputChange);
+      buildColorPanel(design, document.getElementById('colors-container'), onColorChange);
+      buildExportButtons(design, document.getElementById('export-buttons'));
+
+      // Init Three.js
+      const canvas = document.getElementById('three-canvas');
+      const sceneAPI = initViewer(canvas);
+
+      // Print guide
+      if (design.printGuide) {
+        const guideSection = document.getElementById('print-guide-section');
+        guideSection.style.display = '';
+        document.getElementById('print-guide-content').innerHTML = design.printGuide;
+      }
+
+      // First render
+      regenerate();
+
+      // Export
+      document.getElementById('export-all-btn').addEventListener('click', () => {
+        const inputs = getFormValues();
+        exportAllSTL(design, inputs);
+      });
+
+      // ── Helpers ────────────────────────────────────────────────────────
+      let debounceTimer = null;
+      function onInputChange() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(regenerate, 400);
+      }
+      function onColorChange(regionId, hex) {
+        sceneAPI.setRegionColor(regionId, hex);
+      }
+
+      function getFormValues() {
+        const inputs = {};
+        design.inputs.forEach(inp => {
+          const el = document.getElementById(`input-${inp.id}`);
+          if (!el) return;
+          inputs[inp.id] = inp.type === 'number'  ? Number(el.value)
+                         : inp.type === 'checkbox' ? el.checked
+                         : el.value;
+        });
+        return inputs;
+      }
+
+      async function regenerate() {
+        const overlay = document.getElementById('loading-overlay');
+        const errEl   = document.getElementById('canvas-error');
+        const exportBtn = document.getElementById('export-all-btn');
+
+        overlay.style.display = 'flex';
+        errEl.style.display   = 'none';
+        exportBtn.disabled    = true;
+
+        try {
+          const { generate } = await import(`./js/designs/${design.id}/geometry.js`);
+          const inputs        = getFormValues();
+          const geometries    = await generate(inputs);
+          const colors        = getColors();
+
+          sceneAPI.loadGeometries(geometries, design.colorRegions, colors);
+          overlay.style.display = 'none';
+          exportBtn.disabled = false;
+        } catch (err) {
+          console.error(err);
+          overlay.style.display = 'none';
+          showError(err.message || 'Geometry generation failed.');
+        }
+      }
+
+      function showError(msg) {
+        const errEl = document.getElementById('canvas-error');
+        document.getElementById('canvas-error-msg').textContent = msg;
+        errEl.style.display = 'flex';
+      }
+    }
+  </script>
+</body>
+</html>
